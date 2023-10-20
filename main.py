@@ -95,28 +95,10 @@ def delete_record():
 def open_edit_record_window():
     global selected_id, selected_item
     if selected_item:
-        selected_id = selected_item[0]  # Отримати ідентифікатор обраного запису
-        selected_record = table.item(selected_id, "values")
-        add_edit_record("Редагування запису", selected_record)
+        add_edit_record("Редагування запису", selected_id)
 
-# Функція для редагування запису
-def update_record( year, object_name, activity, location, no2, so2, co, microparts, summary,selected_id):
-    try:
-        connection = mysql.connector.connect(host=host, user=user, password=password, database=database)
-        cursor = connection.cursor()
-
-        update_query = "UPDATE data SET year = %s, objectName = %s, activity = %s, location = %s, no2 = %s, so2 = %s, co = %s, microparts = %s, summary = %s WHERE id = %s"
-        data = (year, object_name, activity, location, no2, so2, co, microparts, summary, selected_id)
-        cursor.execute(update_query, data)
-        connection.commit()
-        connection.close()
-        display_table()
-        messagebox.showinfo("Успіх", "Запис успішно оновлено.")
-    except Exception as e:
-        messagebox.showerror("Помилка", f"Виникла помилка: {str(e)}")
-
-# Оновлена функція для додавання або редагування запису
-def add_edit_record(title, record=None):
+# Функція для додавання або редагування запису
+def add_edit_record(title, record_id=None):
     def save_record():
         year = year_entry.get()
         object_name = object_name_entry.get()
@@ -128,23 +110,25 @@ def add_edit_record(title, record=None):
         microparts = microparts_entry.get()
         summary = summary_entry.get()
 
-        if selected_id is None:  # Додавання нового запису
-            try:
-                connection = mysql.connector.connect(host=host, user=user, password=password, database=database)
-                cursor = connection.cursor()
+        try:
+            connection = mysql.connector.connect(host=host, user=user, password=password, database=database)
+            cursor = connection.cursor()
+
+            if record_id is None:  # Додавання нового запису
                 insert_query = "INSERT INTO data (year, objectName, activity, location, no2, so2, co, microparts, summary) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
                 data = (year, object_name, activity, location, no2, so2, co, microparts, summary)
                 cursor.execute(insert_query, data)
-                connection.commit()
-                connection.close()
-                display_table()
-                add_edit_window.destroy()  # Закрити вікно після додавання запису
-                messagebox.showinfo("Успіх", "Запис успішно додано.")
-            except Exception as e:
-                messagebox.showerror("Помилка", f"Виникла помилка: {str(e)}")
-        else:  # Редагування існуючого запису
-            update_record(selected_id, year, object_name, activity, location, no2, so2, co, microparts, summary)
-            add_edit_window.destroy()  # Закрити вікно після редагування запису
+            else:  # Редагування існуючого запису
+                update_query = "UPDATE data SET year = %s, objectName = %s, activity = %s, location = %s, no2 = %s, so2 = %s, co = %s, microparts = %s, summary = %s WHERE id = %s"
+                data = (year, object_name, activity, location, no2, so2, co, microparts, summary, record_id)
+                cursor.execute(update_query, data)
+
+            connection.commit()
+            connection.close()
+            display_table()
+            add_edit_window.destroy()  # Закрити вікно після додавання або редагування запису
+        except Exception as e:
+            messagebox.showerror("Помилка", f"Виникла помилка: {str(e)}")
 
     add_edit_window = tk.Toplevel(root)
     add_edit_window.title(title)
@@ -154,6 +138,7 @@ def add_edit_record(title, record=None):
     year_label.grid(row=0, column=0)
     year_entry = tk.Entry(add_edit_window)
     year_entry.grid(row=0, column=1)
+
 
     object_name_label = tk.Label(add_edit_window, text="Назва об'єкту")
     object_name_label.grid(row=1, column=0)
@@ -198,29 +183,41 @@ def add_edit_record(title, record=None):
     save_button = tk.Button(add_edit_window, text="Зберегти", command=save_record)
     save_button.grid(row=9, columnspan=2)
 
-    if record is not None:  # Заповнити поля для редагування, якщо запис передано
-        year_entry.insert(0, record[0])
-        object_name_entry.insert(0, record[1])
-        activity_entry.insert(0, record[2])
-        location_entry.insert(0, record[3])
-        no2_entry.insert(0, record[4])
-        so2_entry.insert(0, record[5])
-        co_entry.insert(0, record[6])
-        microparts_entry.insert(0, record[7])
-        summary_entry.insert(0, record[8])
+    selected_id = record_id
 
-# Оновлена функція для виділення запису
+    if selected_id is not None:
+        connection = mysql.connector.connect(host=host, user=user, password=password, database=database)
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM data WHERE id = %s", (selected_id,))
+        record = cursor.fetchone()
+        connection.close()
+
+        if record:
+            year, object_name, activity, location, no2, so2, co, microparts, summary = record[0:9]
+            year_entry.insert(0, year)
+            object_name_entry.insert(0, object_name)
+            activity_entry.insert(0, activity)
+            location_entry.insert(0, location)
+            no2_entry.insert(0, no2)
+            so2_entry.insert(0, so2)
+            co_entry.insert(0, co)
+            microparts_entry.insert(0, microparts)
+            summary_entry.insert(0, summary)
+
+# Функція для виділення запису та збереження ідентифікатора для редагування
 def select_record(event):
     global selected_id, selected_item
-    selected_item = table.selection()
-    if selected_item:
-        selected_id = table.item(selected_item[0], "values")[9]
+    selected_items = table.selection()
+    if selected_items:
+        selected_item = selected_items[0]
+        selected_id = table.item(selected_item, "values")[9]
 
 # Створення головного вікна програми
 root = tk.Tk()
 root.title("Імпорт даних з Excel до MySQL")
-root.geometry('1920x400')
 
+root.geometry('1550x400')
+root['bg'] ='purple'
 # Створення Treeview для відображення таблиці
 table = ttk.Treeview(root, columns=("year", "objectName", "activity", "location", "no2", "so2", "co", "microparts", "summary"))
 table.heading("#1", text="Рік", anchor="w")
@@ -232,11 +229,16 @@ table.heading("#6", text="SO2", anchor="w")
 table.heading("#7", text="CO", anchor="w")
 table.heading("#8", text="Мікрочастки", anchor="w")
 table.heading("#9", text="Сума хімічних речовин", anchor="w")
-
+table.column("#0", width=0)
 table.column("#1", width=40)
 table.column("#2", width=310)
-table.column("#3", width=400)
-
+table.column("#3", width=500)
+table.column("#4", width=100)
+table.column("#5", width=100)
+table.column("#6", width=100)
+table.column("#7", width=100)
+table.column("#8", width=100)
+table.column("#9", width=200)
 # Підключіть функцію для виділення запису
 table.bind("<ButtonRelease-1>", select_record)
 table.grid(row=0, column=0, columnspan=4)
