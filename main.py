@@ -8,7 +8,7 @@ from tkinter import messagebox
 # Параметри підключення до бази даних
 host = "localhost"
 user = "root"
-password = "1809"
+password = "2004"
 database = "ecomon"
 
 # Глобальна змінна для збереження ідентифікатора виділеного запису
@@ -108,7 +108,32 @@ def add_edit_record(title, record_id=None):
         so2 = so2_entry.get()
         co = co_entry.get()
         microparts = microparts_entry.get()
-        summary = summary_entry.get()
+
+        # Підрахунок суми автоматично
+        try:
+            no2 = float(no2)
+        except ValueError:
+            no2 = 0.0
+
+        try:
+            so2 = float(so2)
+        except ValueError:
+            so2 = 0.0
+
+        try:
+            co = float(co)
+        except ValueError:
+            co = 0.0
+
+        try:
+            microparts = float(microparts)
+        except ValueError:
+            microparts = 0.0
+
+        summary = no2 + so2 + co + microparts
+
+        summary_entry.delete(0, "end")
+        summary_entry.insert(0, summary)
 
         try:
             connection = mysql.connector.connect(host=host, user=user, password=password, database=database)
@@ -138,7 +163,6 @@ def add_edit_record(title, record_id=None):
     year_label.grid(row=0, column=0)
     year_entry = tk.Entry(add_edit_window)
     year_entry.grid(row=0, column=1)
-
 
     object_name_label = tk.Label(add_edit_window, text="Назва об'єкту")
     object_name_label.grid(row=1, column=0)
@@ -177,7 +201,7 @@ def add_edit_record(title, record_id=None):
 
     summary_label = tk.Label(add_edit_window, text="Сума хімічних речовин")
     summary_label.grid(row=8, column=0)
-    summary_entry = tk.Entry(add_edit_window)
+    summary_entry = tk.Entry(add_edit_window, state="disabled")
     summary_entry.grid(row=8, column=1)
 
     save_button = tk.Button(add_edit_window, text="Зберегти", command=save_record)
@@ -204,6 +228,7 @@ def add_edit_record(title, record_id=None):
             microparts_entry.insert(0, microparts)
             summary_entry.insert(0, summary)
 
+
 # Функція для виділення запису та збереження ідентифікатора для редагування
 def select_record(event):
     global selected_id, selected_item
@@ -216,8 +241,22 @@ def select_record(event):
 root = tk.Tk()
 root.title("Імпорт даних з Excel до MySQL")
 
-root.geometry('1550x400')
-root['bg'] ='purple'
+# Визначення розмірів та розміщення вікна по середині екрану
+window_width = 1550
+window_height = 400
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+x = (screen_width - window_width) // 2
+y = (screen_height - window_height) // 2
+root.geometry(f'{window_width}x{window_height}+{x}+{y}')
+root['bg'] = 'white'
+
+# Зміна стилю та кольорів віджетів
+style = ttk.Style()
+style.theme_use("clam")
+style.configure("Treeview", background="#f0f0f0")
+style.configure("Treeview.Heading", font=("Arial", 12))
+
 # Створення Treeview для відображення таблиці
 table = ttk.Treeview(root, columns=("year", "objectName", "activity", "location", "no2", "so2", "co", "microparts", "summary"))
 table.heading("#1", text="Рік", anchor="w")
@@ -235,25 +274,24 @@ table.column("#2", width=310)
 table.column("#3", width=500)
 table.column("#4", width=100)
 table.column("#5", width=100)
-table.column("#6", width=100)
-table.column("#7", width=100)
+table.column("#6", width=50)
+table.column("#7", width=50)
 table.column("#8", width=100)
 table.column("#9", width=200)
 # Підключіть функцію для виділення запису
 table.bind("<ButtonRelease-1>", select_record)
-table.grid(row=0, column=0, columnspan=4)
+table.pack()
 
-import_button = tk.Button(root, text="Імпортувати дані з Excel", command=import_data)
-import_button.grid(row=1, column=0)
-add_button = tk.Button(root, text="Додати запис", command=lambda: add_edit_record("Додати запис"))
-add_button.grid(row=1, column=1)
-edit_button = tk.Button(root, text="Редагувати запис", command=open_edit_record_window)
-edit_button.grid(row=1, column=2)
-delete_button = tk.Button(root, text="Видалити запис", command=delete_record)
-delete_button.grid(row=1, column=3)
+import_button = tk.Button(root, text="Імпортувати дані з Excel", command=import_data, relief="flat")
+import_button.pack()
+add_button = tk.Button(root, text="Додати запис", command=lambda: add_edit_record("Додати запис"), relief="flat")
+add_button.pack()
+edit_button = tk.Button(root, text="Редагувати запис", command=open_edit_record_window, relief="flat")
+edit_button.pack()
+delete_button = tk.Button(root, text="Видалити запис", command=delete_record, relief="flat")
+delete_button.pack()
 
 display_table()
 
 # Запуск головного циклу tkinter
 root.mainloop()
-
